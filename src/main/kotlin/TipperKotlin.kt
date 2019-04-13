@@ -2,35 +2,38 @@ import net.sourceforge.jFuzzyLogic.FIS
 import net.sourceforge.jFuzzyLogic.plot.JFuzzyChart
 import parser.Match
 import parser.Parser
+import java.math.RoundingMode
 
 object TipperKotlin {
     @Throws(Exception::class)
     @JvmStatic
     fun main(args: Array<String>) {
 
-        val TEAM_A = Team.MAN_CITY
-        val TEAM_B = Team.CHELSEA
+        val teamA = Team.CHELSEA
+        val teamB = Team.MAN_CITY
 
         val matches = Parser.getMatches()
-        val ranking = getRanking(matches)
-        val goals = getGoals(matches)
+        val lastNineWonA = getLastNineWon(teamA, matches)
+        val lastNineWonB = getLastNineWon(teamB, matches)
+        val homeWonPercentA = getHomeWonPercent(teamA, matches)
+        val awayWonPercentB = getAwayWonPercent(teamB, matches)
 
-        val pointDiff = ranking[TEAM_A]?.minus(ranking[TEAM_B]!!)!!
-        val goalDiff = goals[TEAM_A]?.minus(goals[TEAM_B]!!)!!
-
-        fuzzy(pointDiff, goalDiff)
+        fuzzy(teamA, teamB, lastNineWonA, lastNineWonB, homeWonPercentA, awayWonPercentB)
     }
 
-    private fun fuzzy(pointDiff: Int, goalDiff: Int) {
-        // Load from 'FCL' file
-        val fileName = "fcl/typer.fcl"
+    private fun fuzzy(
+        teamA: Team,
+        teamB: Team,
+        lastNineWonA: Int,
+        lastNineWonB: Int,
+        homeWonPercentA: Int,
+        awayWonPercentB: Int
+    ) {
+        val fileName = "fcl/fuzzyTyper.fcl"
         val fis = FIS.load(fileName, true)
-
         val functionBlock = fis.getFunctionBlock("typer")
-
-        // Error while loading?
         if (fis == null) {
-            System.err.println("Can't load file: '$fileName'")
+            println("Can't load file: '$fileName'")
             return
         }
 
@@ -38,8 +41,10 @@ object TipperKotlin {
         JFuzzyChart.get().chart(functionBlock)
 
         // Set inputs
-        fis.setVariable("pointsDiff", pointDiff.toDouble())
-        fis.setVariable("goalsDiff", goalDiff.toDouble())
+        fis.setVariable("lastNineWonA", lastNineWonA.toDouble())
+        fis.setVariable("lastNineWonB", lastNineWonB.toDouble())
+        fis.setVariable("homeWonPercentA", homeWonPercentA.toDouble())
+        fis.setVariable("awayWonPercentB", awayWonPercentB.toDouble())
 
         // Evaluate
         fis.evaluate()
@@ -48,36 +53,54 @@ object TipperKotlin {
         val result = functionBlock.getVariable("result")
         JFuzzyChart.get().chart(result, result.defuzzifier, true)
 
-        // Print ruleSet
-        System.out.println(fis)
+
+        println("Home team: ${teamA.teamName}")
+        println("Away team: ${teamB.teamName}")
+        println("-------------------------------------------------")
+        println("Based on premiere league stats from 2016:")
+        println("${teamA.teamName} won $lastNineWonA/9 last matches.")
+        println("${teamB.teamName} won $lastNineWonB/9 last matches.")
+        println("${teamA.teamName} won $homeWonPercentA% matches playing home.")
+        println("${teamB.teamName} won $awayWonPercentB% matches playing away.")
+        println(
+            "Chances of ${teamA.teamName} winning their next game against ${teamB.teamName} are ${result.latestDefuzzifiedValue.toBigDecimal().setScale(
+                2,
+                RoundingMode.HALF_UP
+            )}%"
+        )
+        println("-------------------------------------------------")
+        println(result)
     }
 
-    private fun getRanking(matches: List<Match>): Map<Team, Int> {
-        val teams = matches.groupBy { it.homeTeam }.keys.toList()
-        val rank = teams.associateBy({ it }, { 0 }).toMutableMap()
+    private fun getLastNineWon(team: Team, matches: List<Match>): Int {
+        var matchesWon = 0
+        val teamMatches = matches
+            .filter { it.homeTeam == team || it.awayTeam == team }
+            .sortedByDescending { it.date }
+            .take(9)
 
-        matches.forEach {
-            when (it.result) {
-                "H" -> rank[it.homeTeam] = rank[it.homeTeam]!!.plus(3)
-                "A" -> rank[it.awayTeam] = rank[it.awayTeam]!!.plus(3)
-                "D" -> {
-                    rank[it.homeTeam] = rank[it.awayTeam]!!.plus(1)
-                    rank[it.awayTeam] = rank[it.homeTeam]!!.plus(1)
-                }
+        teamMatches.forEach {
+            when {
+                it.homeTeam == team && it.result == "H" -> matchesWon += 1
+                it.awayTeam == team && it.result == "A" -> matchesWon += 1
             }
         }
-        return rank
+
+        return matchesWon
     }
 
-    private fun getGoals(matches: List<Match>): Map<Team, Int> {
-        val teams = matches.groupBy { it.homeTeam }.keys.toList()
-        val rank = teams.associateBy({ it }, { 0 }).toMutableMap()
+    private fun getHomeWonPercent(team: Team, matches: List<Match>): Int {
+        val homeMatches = matches.filter { it.homeTeam == team }
+        val wonMatchesCount = homeMatches.filter { it.result == "H" }.count()
+        val winPercent = wonMatchesCount.toDouble() / homeMatches.count().toDouble() * 100
+        return winPercent.toInt()
+    }
 
-        matches.forEach {
-            rank[it.homeTeam] = rank[it.homeTeam]!!.plus(it.homeGoals)
-            rank[it.awayTeam] = rank[it.awayTeam]!!.plus(it.awayGoals)
-        }
-        return rank
+    private fun getAwayWonPercent(team: Team, matches: List<Match>): Int {
+        val awayMatches = matches.filter { it.awayTeam == team }
+        val wonMatchesCount = awayMatches.filter { it.result == "A" }.count()
+        val winPercent = wonMatchesCount.toDouble() / awayMatches.count().toDouble() * 100
+        return winPercent.toInt()
     }
 
     enum class Team constructor(val teamName: String) {

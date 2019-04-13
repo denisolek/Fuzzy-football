@@ -1,5 +1,6 @@
 package parser
 
+import TipperKotlin
 import org.apache.commons.csv.CSVFormat
 import org.apache.commons.csv.CSVParser
 import java.nio.file.Files
@@ -13,7 +14,7 @@ object Parser {
         val reader = Files.newBufferedReader(Paths.get(filePath))
         val csvParser = CSVParser(reader, CSVFormat.DEFAULT)
 
-        val matches = csvParser.records.map {
+        return csvParser.records.map {
             Match(
                 date = LocalDate.parse(it.get(1), DateTimeFormatter.ofPattern("dd/MM/yy")),
                 homeTeam = TipperKotlin.Team.from(it.get(2))!!,
@@ -23,6 +24,5 @@ object Parser {
                 result = it.get(6)
             )
         }
-        return matches
     }
 }
