@@ -4,26 +4,38 @@ import parser.Match
 import parser.Parser
 import java.math.RoundingMode
 
-object TipperKotlin {
+object FuzzyTyper {
     @Throws(Exception::class)
     @JvmStatic
     fun main(args: Array<String>) {
 
-        val teamA = Team.CHELSEA
-        val teamB = Team.MAN_CITY
+        val teamA = Team.STOKE
+        val teamB = Team.CHELSEA
 
-        val matches = Parser.getMatches()
-        val lastNineWonA = getLastNineWon(teamA, matches)
-        val lastNineWonB = getLastNineWon(teamB, matches)
-        val homeWonPercentA = getHomeWonPercent(teamA, matches)
-        val awayWonPercentB = getAwayWonPercent(teamB, matches)
+        val matches2016 = Parser.getMatches("/Users/denisolek/Desktop/PROJECTS/dtsi/data/premier_league_2016.csv")
+        val matches2017 = Parser.getMatches("/Users/denisolek/Desktop/PROJECTS/dtsi/data/premier_league_2017.csv")
 
-        fuzzy(teamA, teamB, lastNineWonA, lastNineWonB, homeWonPercentA, awayWonPercentB)
+        val lastNineWonA = getLastNineWon(teamA, matches2016)
+        val lastNineWonB = getLastNineWon(teamB, matches2016)
+        val homeWonPercentA = getHomeWonPercent(teamA, matches2016)
+        val awayWonPercentB = getAwayWonPercent(teamB, matches2016)
+        val first2017Winner = getFirst2017Winner(teamA, teamB, matches2017)
+        fuzzy(teamA, teamB, first2017Winner, lastNineWonA, lastNineWonB, homeWonPercentA, awayWonPercentB)
+    }
+
+    private fun getFirst2017Winner(teamA: Team, teamB: Team, matches: List<Match>): Pair<Team, String> {
+        val firstMatch = matches.filter { it.homeTeam == teamA && it.awayTeam == teamB }.sortedBy { it.date }.first()
+        return when (firstMatch.result) {
+            "H" -> Pair(teamA, "${firstMatch.homeGoals}:${firstMatch.awayGoals}")
+            "A" -> Pair(teamB, "${firstMatch.homeGoals}:${firstMatch.awayGoals}")
+            else -> Pair(teamA, "-")
+        }
     }
 
     private fun fuzzy(
         teamA: Team,
         teamB: Team,
+        first2017Winner: Pair<Team, String>,
         lastNineWonA: Int,
         lastNineWonB: Int,
         homeWonPercentA: Int,
@@ -63,13 +75,14 @@ object TipperKotlin {
         println("${teamA.teamName} won $homeWonPercentA% matches playing home.")
         println("${teamB.teamName} won $awayWonPercentB% matches playing away.")
         println(
-            "Chances of ${teamA.teamName} winning their next game against ${teamB.teamName} are ${result.latestDefuzzifiedValue.toBigDecimal().setScale(
-                2,
-                RoundingMode.HALF_UP
-            )}%"
+            "Chances of ${teamA.teamName} winning their next game against ${teamB.teamName} are ${
+            result.latestDefuzzifiedValue.toBigDecimal().setScale(2, RoundingMode.HALF_UP)}%"
         )
         println("-------------------------------------------------")
         println(result)
+        println("-------------------------------------------------")
+        println("Winner of first 2017 $teamA vs $teamB was:")
+        println("${first2017Winner.first} - ${first2017Winner.second}")
     }
 
     private fun getLastNineWon(team: Team, matches: List<Match>): Int {
@@ -123,7 +136,12 @@ object TipperKotlin {
         WEST_BROM("West Brom"),
         SUNDERLAND("Sunderland"),
         WEST_HAM("West Ham"),
-        LIVERPOOL("Liverpool");
+
+        LIVERPOOL("Liverpool"),
+        BRIGHTON("Brighton"),
+        NEWCASTLE("Newcastle"),
+        HUDDERSFIELD("Huddersfield"),
+        NONE("none");
 
         companion object {
             fun from(team: String): Team? = Team.values().firstOrNull { it.teamName == team }
