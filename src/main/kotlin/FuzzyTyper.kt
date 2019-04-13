@@ -9,8 +9,8 @@ object FuzzyTyper {
     @JvmStatic
     fun main(args: Array<String>) {
 
-        val teamA = Team.STOKE
-        val teamB = Team.CHELSEA
+        val teamA = Team.CHELSEA
+        val teamB = Team.EVERTON
 
         val matches2016 = Parser.getMatches("/Users/denisolek/Desktop/PROJECTS/dtsi/data/premier_league_2016.csv")
         val matches2017 = Parser.getMatches("/Users/denisolek/Desktop/PROJECTS/dtsi/data/premier_league_2017.csv")
@@ -21,15 +21,6 @@ object FuzzyTyper {
         val awayWonPercentB = getAwayWonPercent(teamB, matches2016)
         val first2017Winner = getFirst2017Winner(teamA, teamB, matches2017)
         fuzzy(teamA, teamB, first2017Winner, lastNineWonA, lastNineWonB, homeWonPercentA, awayWonPercentB)
-    }
-
-    private fun getFirst2017Winner(teamA: Team, teamB: Team, matches: List<Match>): Pair<Team, String> {
-        val firstMatch = matches.filter { it.homeTeam == teamA && it.awayTeam == teamB }.sortedBy { it.date }.first()
-        return when (firstMatch.result) {
-            "H" -> Pair(teamA, "${firstMatch.homeGoals}:${firstMatch.awayGoals}")
-            "A" -> Pair(teamB, "${firstMatch.homeGoals}:${firstMatch.awayGoals}")
-            else -> Pair(teamA, "-")
-        }
     }
 
     private fun fuzzy(
@@ -116,35 +107,13 @@ object FuzzyTyper {
         return winPercent.toInt()
     }
 
-    enum class Team constructor(val teamName: String) {
-        BURNLEY("Burnley"),
-        CRYSTAL_PALACE("Crystal Palace"),
-        EVERTON("Everton"),
-        HULL("Hull"),
-        MAN_CITY("Man City"),
-        MIDDLESBROUGH("Middlesbrough"),
-        SOUTHAMPTON("Southampton"),
-        ARSENAL("Arsenal"),
-        BOURNEMOUTH("Bournemouth"),
-        CHELSEA("Chelsea"),
-        MAN_UNITED("Man United"),
-        LEICESTER("Leicester"),
-        STOKE("Stoke"),
-        SWANSEA("Swansea"),
-        TOTTENHAM("Tottenham"),
-        WATFORD("Watford"),
-        WEST_BROM("West Brom"),
-        SUNDERLAND("Sunderland"),
-        WEST_HAM("West Ham"),
-
-        LIVERPOOL("Liverpool"),
-        BRIGHTON("Brighton"),
-        NEWCASTLE("Newcastle"),
-        HUDDERSFIELD("Huddersfield"),
-        NONE("none");
-
-        companion object {
-            fun from(team: String): Team? = Team.values().firstOrNull { it.teamName == team }
+    private fun getFirst2017Winner(teamA: Team, teamB: Team, matches: List<Match>): Pair<Team, String> {
+        val firstMatch = matches.filter { it.homeTeam == teamA && it.awayTeam == teamB }.sortedBy { it.date }.first()
+        val winner = when (firstMatch.result) {
+            "H" -> teamA
+            "A" -> teamB
+            else -> Team.NONE
         }
+        return Pair(winner, "${firstMatch.homeGoals}:${firstMatch.awayGoals}")
     }
 }
