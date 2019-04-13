@@ -1,0 +1,72 @@
+FUNCTION_BLOCK typer
+
+VAR_INPUT
+	lastNineWonA : REAL;
+	lastNineWonB : REAL;
+	homeWonPercentA : REAL;
+    awayWonPercentB : REAL;
+END_VAR
+
+VAR_OUTPUT
+	result : REAL;
+END_VAR
+
+FUZZIFY lastNineWonA
+	TERM few := (0, 1) (4, 0);
+	TERM moderate := (1, 0) (4, 1) (6, 1) (9, 0);
+	TERM many := (6, 0) (9, 1);
+END_FUZZIFY
+
+FUZZIFY lastNineWonB
+	TERM few := (0, 1) (4, 0);
+	TERM moderate := (1, 0) (4, 1) (6, 1) (9, 0);
+	TERM many := (6, 0) (9, 1);
+END_FUZZIFY
+
+FUZZIFY homeWonPercentA
+	TERM low := (0, 1) (20, 1) (40, 0);
+	TERM medium := (30, 0) (45, 1) (55, 1) (70, 0);
+	TERM high := (60, 0) (80, 1) (100, 1);
+END_FUZZIFY
+
+FUZZIFY awayWonPercentB
+	TERM low := (0, 1) (20, 1) (40, 0);
+	TERM medium := (30, 0) (45, 1) (55, 1) (70, 0);
+	TERM high := (60, 0) (80, 1) (100, 1);
+END_FUZZIFY
+
+DEFUZZIFY result			// Defzzzify output variable 'tip' : {'cheap', 'average', 'generous' }
+	TERM lose := (0,1) (20, 1) (45,0);
+	TERM draw := (40,0) (50, 1)  (60,0);
+	TERM win := (55,0) (80,1) (100,1);
+	METHOD : COG;		// Use 'Center Of Gravity' defuzzification method
+	DEFAULT := 0;		// Default value is 0 (if no rule activates defuzzifier)
+END_DEFUZZIFY
+
+RULEBLOCK No1
+	AND : MIN;			// Use 'min' for 'and' (also implicit use 'max' for 'or' to fulfill DeMorgan's Law)
+	ACT : MIN;			// Use 'min' activation method
+	ACCU : MAX;			// Use 'max' accumulation method
+
+	RULE 1 : IF lastNineWonA IS few AND lastNineWonB IS few THEN result IS draw;
+	RULE 2 : IF lastNineWonA IS few AND lastNineWonB IS moderate THEN result IS lose;
+	RULE 3 : IF lastNineWonA IS few AND lastNineWonB IS many THEN result IS lose;
+	RULE 4 : IF lastNineWonA IS moderate AND lastNineWonB IS few THEN result IS win;
+	RULE 5 : IF lastNineWonA IS moderate AND lastNineWonB IS moderate THEN result IS draw;
+	RULE 6 : IF lastNineWonA IS moderate AND lastNineWonB IS many THEN result IS lose;
+	RULE 7 : IF lastNineWonA IS many AND lastNineWonB IS few THEN result IS win;
+	RULE 8 : IF lastNineWonA IS many AND lastNineWonB IS moderate THEN result IS win;
+	RULE 9 : IF lastNineWonA IS many AND lastNineWonB IS many THEN result IS draw;
+
+	RULE 10 : IF homeWonPercentA IS low AND awayWonPercentB IS low THEN result IS draw;
+	RULE 11 : IF homeWonPercentA IS low AND awayWonPercentB IS medium THEN result IS lose;
+	RULE 12 : IF homeWonPercentA IS low AND awayWonPercentB IS high THEN result IS lose;
+	RULE 13 : IF homeWonPercentA IS medium AND awayWonPercentB IS low THEN result IS win;
+	RULE 14 : IF homeWonPercentA IS medium AND awayWonPercentB IS medium THEN result IS draw;
+	RULE 15 : IF homeWonPercentA IS medium AND awayWonPercentB IS high THEN result IS lose;
+	RULE 16 : IF homeWonPercentA IS high AND awayWonPercentB IS low THEN result IS win;
+	RULE 17 : IF homeWonPercentA IS high AND awayWonPercentB IS medium THEN result IS win;
+	RULE 18 : IF homeWonPercentA IS high AND awayWonPercentB IS high THEN result IS draw;
+END_RULEBLOCK
+
+END_FUNCTION_BLOCK
